@@ -104,7 +104,7 @@ export default function Header() {
                         ))}
                         <Link
                             to="/turnos"
-                            onClick={handleLinkClick}
+                            onClick={() => setIsOpen(false)}
                             className="mt-2 px-5 py-3 bg-accent text-white text-center font-semibold rounded-full hover:bg-accent-hover transition-all duration-300"
                         >
                             Reservar turno
