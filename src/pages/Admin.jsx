@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Search, Filter, Trash2, Edit3, Check, X, Copy, MessageCircle, ChevronDown } from 'lucide-react'
+import { Search, Filter, Trash2, Edit3, Check, X, Copy, MessageCircle, ChevronDown, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 
@@ -63,6 +64,7 @@ function PhoneActions({ telefono, onClose }) {
 // ── Login screen ──
 function LoginScreen({ onLogin }) {
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState(false)
 
     const [loading, setLoading] = useState(false)
@@ -101,21 +103,30 @@ function LoginScreen({ onLogin }) {
             >
                 <p className="text-text-muted text-sm mb-6">Para continuar necesitamos que ingreses tu contraseña:</p>
 
-                <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Contraseña"
-                    autoFocus
-                    className={`
-                        w-full px-4 py-3 rounded-xl border bg-bg text-text placeholder-text-light text-sm
-                        focus:outline-none transition-all duration-300 mb-4
-                        ${error
-                            ? 'border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-400/20'
-                            : 'border-border focus:border-accent/50 focus:ring-2 focus:ring-accent/10'
-                        }
-                    `}
-                />
+                <div className="relative mb-4">
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Contraseña"
+                        autoFocus
+                        className={`
+                            w-full px-4 py-3 rounded-xl border bg-bg text-text placeholder-text-light text-sm
+                            focus:outline-none transition-all duration-300 pr-12
+                            ${error
+                                ? 'border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-400/20'
+                                : 'border-border focus:border-accent/50 focus:ring-2 focus:ring-accent/10'
+                            }
+                        `}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
+                    >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                </div>
 
                 {error && (
                     <p className="text-red-500 text-xs mb-3 animate-fade-in">Contraseña incorrecta</p>
@@ -143,6 +154,12 @@ function Dashboard() {
     const [editForm, setEditForm] = useState({})
     const [showFilterDropdown, setShowFilterDropdown] = useState(false)
     const [confirmModal, setConfirmModal] = useState(null)
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 10
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [search, filterStatus])
 
     useEffect(() => {
         fetch('/api/turnos/all')
@@ -180,6 +197,9 @@ function Dashboard() {
                 return a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora)
             })
     }, [appointments, search, filterStatus])
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage)
+    const paginatedItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     const handleDelete = (id) => setConfirmModal({ type: 'delete', id })
 
@@ -305,7 +325,7 @@ function Dashboard() {
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-light" />
                     <input
                         type="text"
-                        placeholder="Buscar por nombre, teléfono o fecha..."
+                        placeholder="Buscar por día, teléfono o nombre ..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-surface text-text placeholder-text-light text-sm focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all duration-300"
@@ -339,10 +359,12 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Results count */}
-            <p className="text-xs text-text-light mb-4">
-                {filtered.length} turno{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-            </p>
+            {/* Results count & Actions */}
+            <div className="flex items-center justify-between mb-4">
+                <p className="text-xs text-text-light">
+                    {filtered.length} turno{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+                </p>
+            </div>
 
             {/* ── Table (desktop) ── */}
             <div className="hidden md:block bg-surface rounded-2xl border border-border overflow-hidden">
@@ -350,17 +372,17 @@ function Dashboard() {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-border">
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Fecha y hora</th>
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Paciente info</th>
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Teléfono</th>
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Receta</th>
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Observaciones</th>
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Confirmado?</th>
+                                <th className="text-center px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Fecha y hora</th>
+                                <th className="text-center px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Paciente info</th>
+                                <th className="text-center px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Teléfono</th>
+                                <th className="text-center px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Receta</th>
+                                <th className="text-center px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Observaciones</th>
+                                <th className="text-center px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Confirmado?</th>
                                 <th className="text-right px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((a) => {
+                            {paginatedItems.map((a) => {
                                 const past = isPast(a.fecha, a.hora)
                                 const isEditing = editingId === a.id
 
@@ -380,20 +402,20 @@ function Dashboard() {
                                         className={`border-b border-border last:border-b-0 transition-all duration-200 ${past ? 'bg-text/5 opacity-60' : 'hover:bg-accent/[0.03]'
                                             }`}
                                     >
-                                        <td className="px-5 py-4">
+                                        <td className="px-5 py-4 text-center">
                                             <div className={`font-medium ${past ? 'text-text-light' : 'text-text'}`}>
                                                 {formatDate(a.fecha)}
                                             </div>
                                             <div className="text-text-light text-xs">{a.hora}hs</div>
                                         </td>
-                                        <td className={`px-5 py-4 font-medium ${past ? 'text-text-light' : 'text-text'}`}>
+                                        <td className={`px-5 py-4 text-center font-medium ${past ? 'text-text-light' : 'text-text'}`}>
                                             <div>{a.nombre}</div>
                                             <div className="text-xs font-normal text-text-muted">{a.email}</div>
                                         </td>
-                                        <td className="px-5 py-4 relative">
+                                        <td className="px-5 py-4 text-center relative">
                                             <button
                                                 onClick={() => setPhonePopup(phonePopup === a.id ? null : a.id)}
-                                                className="text-accent hover:text-accent-hover underline underline-offset-2 transition-colors text-sm"
+                                                className="text-accent hover:text-accent-hover underline underline-offset-2 transition-colors text-sm inline-block"
                                             >
                                                 {a.telefono}
                                             </button>
@@ -401,7 +423,7 @@ function Dashboard() {
                                                 <PhoneActions telefono={a.telefono} onClose={() => setPhonePopup(null)} />
                                             )}
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="px-5 py-4 text-center">
                                             <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${a.receta
                                                 ? 'bg-accent/10 text-accent'
                                                 : 'bg-text/5 text-text-muted'
@@ -409,16 +431,18 @@ function Dashboard() {
                                                 {a.receta ? 'Sí' : 'No'}
                                             </span>
                                         </td>
-                                        <td className={`px-5 py-4 text-xs max-w-xs break-words ${past ? 'text-text-light' : 'text-text-muted'}`}>
+                                        <td className={`px-5 py-4 text-center text-xs max-w-xs break-words mx-auto ${past ? 'text-text-light' : 'text-text-muted'}`}>
                                             {a.observaciones || '—'}
                                         </td>
-                                        <td className="px-5 py-4">
+                                        <td className="px-5 py-4 text-center">
                                             {past ? (
-                                                <span className="text-text-muted">—</span>
+                                                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-text/10 text-text-muted">
+                                                    Terminado
+                                                </span>
                                             ) : (
                                                 <button
                                                     onClick={() => handleToggleConfirm(a.id, a.confirmado)}
-                                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300 cursor-pointer ${a.confirmado
+                                                    className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300 cursor-pointer ${a.confirmado
                                                         ? 'bg-green-500/10 text-green-700'
                                                         : 'bg-amber-500/10 text-amber-700'
                                                         }`}
@@ -429,12 +453,8 @@ function Dashboard() {
                                             )}
                                         </td>
                                         <td className="px-5 py-4 text-right">
-                                            {past ? (
-                                                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-text/10 text-text-muted">
-                                                    Terminado
-                                                </span>
-                                            ) : (
-                                                <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {!past && (
                                                     <button
                                                         onClick={() => startEdit(a)}
                                                         className="p-2 rounded-lg hover:bg-accent/10 text-text-muted hover:text-accent transition-all duration-200"
@@ -442,15 +462,15 @@ function Dashboard() {
                                                     >
                                                         <Edit3 className="w-4 h-4" />
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleDelete(a.id)}
-                                                        className="p-2 rounded-lg hover:bg-red-500/10 text-text-muted hover:text-red-500 transition-all duration-200"
-                                                        title="Borrar"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            )}
+                                                )}
+                                                <button
+                                                    onClick={() => handleDelete(a.id)}
+                                                    className="p-2 rounded-lg hover:bg-red-500/10 text-text-muted hover:text-red-500 transition-all duration-200"
+                                                    title="Borrar"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 )
@@ -467,7 +487,7 @@ function Dashboard() {
 
             {/* ── Cards (mobile) ── */}
             <div className="md:hidden flex flex-col gap-3">
-                {filtered.map((a) => {
+                {paginatedItems.map((a) => {
                     const past = isPast(a.fecha, a.hora)
                     const isEditing = editingId === a.id
 
@@ -532,22 +552,22 @@ function Dashboard() {
                                 )}
                             </div>
 
-                            {!past && (
-                                <div className="flex gap-2 pt-2 border-t border-border">
+                            <div className="flex gap-2 pt-2 border-t border-border">
+                                {!past && (
                                     <button
                                         onClick={() => startEdit(a)}
                                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs text-text-muted hover:text-accent hover:bg-accent/5 transition-all"
                                     >
                                         <Edit3 className="w-3.5 h-3.5" /> Editar
                                     </button>
-                                    <button
-                                        onClick={() => handleDelete(a.id)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs text-text-muted hover:text-red-500 hover:bg-red-500/5 transition-all"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" /> Borrar
-                                    </button>
-                                </div>
-                            )}
+                                )}
+                                <button
+                                    onClick={() => handleDelete(a.id)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs text-text-muted hover:text-red-500 hover:bg-red-500/5 transition-all"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" /> Borrar
+                                </button>
+                            </div>
                         </div>
                     )
                 })}
@@ -558,10 +578,41 @@ function Dashboard() {
                 )}
             </div>
 
-            {confirmModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-2">
+                    <p className="text-xs text-text-muted">
+                        Página {currentPage} de {totalPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                setCurrentPage(p => Math.max(1, p - 1));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-xl border border-border bg-surface text-text hover:bg-accent/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setCurrentPage(p => Math.min(totalPages, p + 1));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={currentPage === totalPages}
+                            className="p-2 rounded-xl border border-border bg-surface text-text hover:bg-accent/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {confirmModal && typeof window !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmModal(null)} />
-                    <div className="relative bg-surface rounded-2xl border border-border p-8 w-full max-w-sm flex flex-col items-center justify-center text-center animate-fade-in-up shadow-2xl">
+                    <div className="relative bg-surface rounded-2xl border border-border p-8 w-full max-w-sm flex flex-col items-center justify-center text-center shadow-2xl animate-fade-in-up">
                         <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center mb-5 bg-bg">
                             {confirmModal.type === 'edit'
                                 ? <Edit3 className="w-8 h-8 text-text" />
@@ -591,7 +642,8 @@ function Dashboard() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     )
