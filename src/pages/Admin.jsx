@@ -1,93 +1,26 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Search, Filter, Trash2, Edit3, Check, X, Copy, MessageCircle, ChevronDown } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 
-// ── Mock: turnos registrados ──
-const initialAppointments = [
-    {
-        id: 1,
-        fecha: '2026-09-15',
-        hora: '09:00',
-        nombre: 'María García',
-        telefono: '351 555-1234',
-        receta: true,
-        observaciones: 'Necesita lentes multifocales',
-        confirmado: true,
-    },
-    {
-        id: 2,
-        fecha: '2026-09-15',
-        hora: '10:30',
-        nombre: 'Juan Pérez',
-        telefono: '351 444-5678',
-        receta: false,
-        observaciones: '',
-        confirmado: false,
-    },
-    {
-        id: 3,
-        fecha: '2026-09-16',
-        hora: '11:00',
-        nombre: 'Laura Rodríguez',
-        telefono: '351 333-9012',
-        receta: true,
-        observaciones: 'Control anual de vista',
-        confirmado: true,
-    },
-    {
-        id: 4,
-        fecha: '2026-09-17',
-        hora: '09:30',
-        nombre: 'Carlos López',
-        telefono: '351 222-3456',
-        receta: false,
-        observaciones: 'Primera visita',
-        confirmado: false,
-    },
-    {
-        id: 5,
-        fecha: '2026-09-18',
-        hora: '17:30',
-        nombre: 'Ana Martínez',
-        telefono: '351 111-7890',
-        receta: true,
-        observaciones: 'Cambio de armazón',
-        confirmado: true,
-    },
-    {
-        id: 6,
-        fecha: '2026-09-12',
-        hora: '10:00',
-        nombre: 'Pedro Sánchez',
-        telefono: '351 666-1234',
-        receta: false,
-        observaciones: 'Consulta por lentes de contacto',
-        confirmado: true,
-    },
-    {
-        id: 7,
-        fecha: '2026-09-10',
-        hora: '12:00',
-        nombre: 'Sofía Fernández',
-        telefono: '351 777-5678',
-        receta: true,
-        observaciones: '',
-        confirmado: true,
-    },
-]
-
-const ADMIN_PASSWORD = '123'
+// ── Variables ──
 
 function formatDate(fecha) {
     const d = new Date(fecha + 'T00:00:00')
     return d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function isPast(fecha) {
+function isPast(fecha, hora) {
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const d = new Date(fecha + 'T00:00:00')
+    if (!hora) {
+        today.setHours(0, 0, 0, 0)
+        const d = new Date(fecha + 'T00:00:00')
+        return d < today
+    }
+
+    const [year, month, day] = fecha.split('-').map(Number)
+    const [h, m] = hora.split(':').map(Number)
+    const d = new Date(year, month - 1, day, h, m)
     return d < today
 }
 
@@ -105,22 +38,25 @@ function PhoneActions({ telefono, onClose }) {
     }
 
     return (
-        <div className="absolute z-30 mt-1 right-0 bg-surface rounded-xl border border-border shadow-xl py-1 min-w-[200px] animate-slide-down">
-            <button
-                onClick={handleCopy}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text hover:bg-accent/5 hover:text-accent transition-all duration-200"
-            >
-                <Copy className="w-4 h-4" />
-                Copiar número
-            </button>
-            <button
-                onClick={handleWhatsApp}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text hover:bg-accent/5 hover:text-accent transition-all duration-200"
-            >
-                <MessageCircle className="w-4 h-4" />
-                Enviar WhatsApp
-            </button>
-        </div>
+        <>
+            <div className="fixed inset-0 z-20" onClick={onClose} />
+            <div className="absolute z-30 mt-1 md:mt-0 md:top-1/2 md:-translate-y-1/2 right-0 md:right-auto md:left-full md:ml-2 bg-surface rounded-xl border border-border shadow-xl py-1 min-w-[200px] animate-slide-down">
+                <button
+                    onClick={handleCopy}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text hover:bg-accent/5 hover:text-accent transition-all duration-200"
+                >
+                    <Copy className="w-4 h-4" />
+                    Copiar número
+                </button>
+                <button
+                    onClick={handleWhatsApp}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text hover:bg-accent/5 hover:text-accent transition-all duration-200"
+                >
+                    <MessageCircle className="w-4 h-4" />
+                    Enviar WhatsApp
+                </button>
+            </div>
+        </>
     )
 }
 
@@ -129,13 +65,31 @@ function LoginScreen({ onLogin }) {
     const [password, setPassword] = useState('')
     const [error, setError] = useState(false)
 
-    const handleSubmit = (e) => {
+    const [loading, setLoading] = useState(false)
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        if (password === ADMIN_PASSWORD) {
-            onLogin()
-        } else {
+        setLoading(true)
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            })
+
+            if (res.ok) {
+                // If it's valid, we store in session and enter
+                sessionStorage.setItem('adminAuth', 'true')
+                onLogin()
+            } else {
+                throw new Error('Incorrecta')
+            }
+        } catch (err) {
             setError(true)
             setTimeout(() => setError(false), 2000)
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -169,9 +123,10 @@ function LoginScreen({ onLogin }) {
 
                 <button
                     type="submit"
-                    className="w-full py-3 bg-accent text-white font-semibold rounded-full hover:bg-accent-hover transition-all duration-300 hover:shadow-lg hover:shadow-accent/20 text-sm"
+                    disabled={loading}
+                    className="w-full py-3 bg-accent text-white font-semibold rounded-full hover:bg-accent-hover transition-all duration-300 hover:shadow-lg hover:shadow-accent/20 text-sm disabled:opacity-70"
                 >
-                    Ingresar
+                    {loading ? 'Verificando...' : 'Ingresar'}
                 </button>
             </form>
         </div>
@@ -180,13 +135,21 @@ function LoginScreen({ onLogin }) {
 
 // ── Dashboard ──
 function Dashboard() {
-    const [appointments, setAppointments] = useState(initialAppointments)
+    const [appointments, setAppointments] = useState([])
     const [search, setSearch] = useState('')
     const [filterStatus, setFilterStatus] = useState('all') // all | pending | confirmed | past
     const [phonePopup, setPhonePopup] = useState(null) // appointment id
     const [editingId, setEditingId] = useState(null)
     const [editForm, setEditForm] = useState({})
     const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+    const [confirmModal, setConfirmModal] = useState(null)
+
+    useEffect(() => {
+        fetch('/api/turnos/all')
+            .then(res => res.json())
+            .then(data => setAppointments(data))
+            .catch(err => console.error('Error fetching appointments:', err))
+    }, [])
 
     const filterLabels = {
         all: 'Todos',
@@ -200,32 +163,56 @@ function Dashboard() {
             .filter((a) => {
                 // Search
                 const q = search.toLowerCase()
-                if (q && !a.nombre.toLowerCase().includes(q) && !a.telefono.includes(q) && !a.fecha.includes(q)) {
+                if (q && !a.nombre.toLowerCase().includes(q) && !(a.email || '').toLowerCase().includes(q) && !a.telefono.includes(q) && !a.fecha.includes(q)) {
                     return false
                 }
                 // Filter
-                if (filterStatus === 'pending') return !isPast(a.fecha) && !a.confirmado
-                if (filterStatus === 'confirmed') return !isPast(a.fecha) && a.confirmado
-                if (filterStatus === 'past') return isPast(a.fecha)
+                if (filterStatus === 'pending') return !isPast(a.fecha, a.hora) && !a.confirmado
+                if (filterStatus === 'confirmed') return !isPast(a.fecha, a.hora) && a.confirmado
+                if (filterStatus === 'past') return isPast(a.fecha, a.hora)
                 return true
             })
             .sort((a, b) => {
                 // Show upcoming first, then past
-                const aPast = isPast(a.fecha)
-                const bPast = isPast(b.fecha)
+                const aPast = isPast(a.fecha, a.hora)
+                const bPast = isPast(b.fecha, b.hora)
                 if (aPast !== bPast) return aPast ? 1 : -1
                 return a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora)
             })
     }, [appointments, search, filterStatus])
 
-    const handleDelete = (id) => {
-        setAppointments(prev => prev.filter(a => a.id !== id))
+    const handleDelete = (id) => setConfirmModal({ type: 'delete', id })
+
+    const confirmDelete = async (id) => {
+        try {
+            const res = await fetch(`/api/turnos/${id}`, { method: 'DELETE' })
+            if (res.ok) {
+                setAppointments(prev => prev.filter(a => a.id !== id))
+            } else {
+                alert('No se pudo borrar el turno')
+            }
+        } catch (err) {
+            console.error('Error deleting:', err)
+            alert('Error de conexión al intentar borrar')
+        }
+        setConfirmModal(null)
     }
 
-    const handleToggleConfirm = (id) => {
-        setAppointments(prev => prev.map(a =>
-            a.id === id ? { ...a, confirmado: !a.confirmado } : a
-        ))
+    const handleToggleConfirm = async (id, isConfirmado) => {
+        try {
+            const res = await fetch(`/api/turnos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirmado: !isConfirmado })
+            })
+            if (res.ok) {
+                setAppointments(prev => prev.map(a =>
+                    a.id === id ? { ...a, confirmado: !isConfirmado } : a
+                ))
+            }
+        } catch (err) {
+            console.error('Error toggling confirm:', err)
+        }
     }
 
     const startEdit = (appointment) => {
@@ -233,18 +220,82 @@ function Dashboard() {
         setEditForm({ ...appointment })
     }
 
-    const saveEdit = () => {
-        setAppointments(prev => prev.map(a =>
-            a.id === editingId ? { ...editForm } : a
-        ))
-        setEditingId(null)
-        setEditForm({})
+    const saveEdit = () => setConfirmModal({ type: 'edit' })
+
+    const confirmSaveEdit = async () => {
+        try {
+            const res = await fetch(`/api/turnos/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm)
+            })
+
+            const data = await res.json()
+            if (res.ok) {
+                setAppointments(prev => prev.map(a =>
+                    a.id === editingId ? { ...data.turno } : a
+                ))
+                setEditingId(null)
+                setEditForm({})
+            } else {
+                alert(data.error || 'Error al guardar los cambios')
+            }
+        } catch (err) {
+            console.error('Error saving:', err)
+            alert('Error de conexión')
+        }
+        setConfirmModal(null)
     }
 
     const cancelEdit = () => {
         setEditingId(null)
         setEditForm({})
     }
+
+    const morningSlots = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30']
+    const afternoonSlots = ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30']
+    const allSlots = [...morningSlots, ...afternoonSlots]
+
+    const reservedSlotsOnEditDate = useMemo(() => {
+        if (!editForm.fecha) return []
+        return appointments
+            .filter(a => a.fecha === editForm.fecha && a.id !== editingId)
+            .map(a => a.hora)
+    }, [appointments, editForm.fecha, editingId])
+
+    const renderEditForm = () => (
+        <div className="bg-surface rounded-2xl border border-accent/30 p-5 space-y-3 w-full">
+            <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={editForm.fecha} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} className="px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" />
+                <select value={editForm.hora} onChange={e => setEditForm({ ...editForm, hora: e.target.value })} className="px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs">
+                    <option value="" disabled>Selecciona hora</option>
+                    {allSlots.map(time => {
+                        const isReserved = reservedSlotsOnEditDate.includes(time)
+                        if (isReserved) return null
+                        return <option key={time} value={time}>{time}</option>
+                    })}
+                </select>
+            </div>
+            <input type="text" value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Nombre" />
+            <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Email" />
+            <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Teléfono" />
+            <input type="text" value={editForm.observaciones} onChange={e => setEditForm({ ...editForm, observaciones: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Observaciones" />
+            <div className="grid grid-cols-2 gap-2">
+                <select value={editForm.receta ? 'si' : 'no'} onChange={e => setEditForm({ ...editForm, receta: e.target.value === 'si' })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs">
+                    <option value="si">Con receta</option>
+                    <option value="no">Sin receta</option>
+                </select>
+                <select value={editForm.confirmado ? 'si' : 'no'} onChange={e => setEditForm({ ...editForm, confirmado: e.target.value === 'si' })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs">
+                    <option value="si">Confirmado</option>
+                    <option value="no">Pendiente</option>
+                </select>
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+                <button onClick={saveEdit} className="w-full py-2 bg-accent text-white rounded-full text-xs font-semibold hover:bg-accent-hover transition-colors">Guardar</button>
+                <button onClick={cancelEdit} className="w-full py-2 border border-border text-text-muted rounded-full text-xs font-semibold hover:bg-accent/5 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    )
 
     return (
         <div className="opacity-0 animate-fade-in-up">
@@ -300,7 +351,7 @@ function Dashboard() {
                         <thead>
                             <tr className="border-b border-border">
                                 <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Fecha y hora</th>
-                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Paciente</th>
+                                <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Paciente info</th>
                                 <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Teléfono</th>
                                 <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Receta</th>
                                 <th className="text-left px-5 py-4 text-xs tracking-wider uppercase text-text-muted font-semibold">Observaciones</th>
@@ -310,37 +361,14 @@ function Dashboard() {
                         </thead>
                         <tbody>
                             {filtered.map((a) => {
-                                const past = isPast(a.fecha)
+                                const past = isPast(a.fecha, a.hora)
                                 const isEditing = editingId === a.id
 
                                 if (isEditing) {
                                     return (
                                         <tr key={a.id} className="border-b border-border bg-accent/5">
-                                            <td className="px-5 py-3">
-                                                <input type="date" value={editForm.fecha} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} className="px-2 py-1 rounded-lg border border-border bg-bg text-text text-xs w-28" />
-                                                <input type="text" value={editForm.hora} onChange={e => setEditForm({ ...editForm, hora: e.target.value })} className="px-2 py-1 rounded-lg border border-border bg-bg text-text text-xs w-16 ml-1" />
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <input type="text" value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })} className="px-2 py-1 rounded-lg border border-border bg-bg text-text text-xs w-full" />
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="px-2 py-1 rounded-lg border border-border bg-bg text-text text-xs w-full" />
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <select value={editForm.receta ? 'si' : 'no'} onChange={e => setEditForm({ ...editForm, receta: e.target.value === 'si' })} className="px-2 py-1 rounded-lg border border-border bg-bg text-text text-xs">
-                                                    <option value="si">Sí</option>
-                                                    <option value="no">No</option>
-                                                </select>
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <input type="text" value={editForm.observaciones} onChange={e => setEditForm({ ...editForm, observaciones: e.target.value })} className="px-2 py-1 rounded-lg border border-border bg-bg text-text text-xs w-full" />
-                                            </td>
-                                            <td className="px-5 py-3">—</td>
-                                            <td className="px-5 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={saveEdit} className="p-2 rounded-lg hover:bg-green-500/10 text-green-600 transition-colors"><Check className="w-4 h-4" /></button>
-                                                    <button onClick={cancelEdit} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"><X className="w-4 h-4" /></button>
-                                                </div>
+                                            <td colSpan="7" className="p-4">
+                                                {renderEditForm()}
                                             </td>
                                         </tr>
                                     )
@@ -349,7 +377,7 @@ function Dashboard() {
                                 return (
                                     <tr
                                         key={a.id}
-                                        className={`border-b border-border last:border-b-0 transition-colors duration-200 ${past ? 'bg-text/[0.03] text-text-light' : 'hover:bg-accent/[0.03]'
+                                        className={`border-b border-border last:border-b-0 transition-all duration-200 ${past ? 'bg-text/5 opacity-60' : 'hover:bg-accent/[0.03]'
                                             }`}
                                     >
                                         <td className="px-5 py-4">
@@ -359,7 +387,8 @@ function Dashboard() {
                                             <div className="text-text-light text-xs">{a.hora}hs</div>
                                         </td>
                                         <td className={`px-5 py-4 font-medium ${past ? 'text-text-light' : 'text-text'}`}>
-                                            {a.nombre}
+                                            <div>{a.nombre}</div>
+                                            <div className="text-xs font-normal text-text-muted">{a.email}</div>
                                         </td>
                                         <td className="px-5 py-4 relative">
                                             <button
@@ -380,17 +409,15 @@ function Dashboard() {
                                                 {a.receta ? 'Sí' : 'No'}
                                             </span>
                                         </td>
-                                        <td className={`px-5 py-4 text-xs max-w-[200px] truncate ${past ? 'text-text-light' : 'text-text-muted'}`}>
+                                        <td className={`px-5 py-4 text-xs max-w-xs break-words ${past ? 'text-text-light' : 'text-text-muted'}`}>
                                             {a.observaciones || '—'}
                                         </td>
                                         <td className="px-5 py-4">
                                             {past ? (
-                                                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-text/10 text-text-light">
-                                                    Finalizada
-                                                </span>
+                                                <span className="text-text-muted">—</span>
                                             ) : (
                                                 <button
-                                                    onClick={() => handleToggleConfirm(a.id)}
+                                                    onClick={() => handleToggleConfirm(a.id, a.confirmado)}
                                                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300 cursor-pointer ${a.confirmado
                                                         ? 'bg-green-500/10 text-green-700'
                                                         : 'bg-amber-500/10 text-amber-700'
@@ -402,7 +429,11 @@ function Dashboard() {
                                             )}
                                         </td>
                                         <td className="px-5 py-4 text-right">
-                                            {!past && (
+                                            {past ? (
+                                                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-text/10 text-text-muted">
+                                                    Terminado
+                                                </span>
+                                            ) : (
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         onClick={() => startEdit(a)}
@@ -437,29 +468,13 @@ function Dashboard() {
             {/* ── Cards (mobile) ── */}
             <div className="md:hidden flex flex-col gap-3">
                 {filtered.map((a) => {
-                    const past = isPast(a.fecha)
+                    const past = isPast(a.fecha, a.hora)
                     const isEditing = editingId === a.id
 
                     if (isEditing) {
                         return (
-                            <div key={a.id} className="bg-surface rounded-2xl border border-accent/30 p-5 space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="date" value={editForm.fecha} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} className="px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" />
-                                    <input type="text" value={editForm.hora} onChange={e => setEditForm({ ...editForm, hora: e.target.value })} className="px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Hora" />
-                                </div>
-                                <input type="text" value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Nombre" />
-                                <input type="text" value={editForm.telefono} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Teléfono" />
-                                <input type="text" value={editForm.observaciones} onChange={e => setEditForm({ ...editForm, observaciones: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs" placeholder="Observaciones" />
-                                <div className="flex gap-2">
-                                    <select value={editForm.receta ? 'si' : 'no'} onChange={e => setEditForm({ ...editForm, receta: e.target.value === 'si' })} className="flex-1 px-3 py-2 rounded-xl border border-border bg-bg text-text text-xs">
-                                        <option value="si">Con receta</option>
-                                        <option value="no">Sin receta</option>
-                                    </select>
-                                </div>
-                                <div className="flex gap-2 pt-1">
-                                    <button onClick={saveEdit} className="flex-1 py-2 bg-accent text-white rounded-full text-xs font-semibold hover:bg-accent-hover transition-colors">Guardar</button>
-                                    <button onClick={cancelEdit} className="flex-1 py-2 border border-border text-text-muted rounded-full text-xs font-semibold hover:bg-accent/5 transition-colors">Cancelar</button>
-                                </div>
+                            <div key={a.id}>
+                                {renderEditForm()}
                             </div>
                         )
                     }
@@ -480,12 +495,12 @@ function Dashboard() {
                                     </p>
                                 </div>
                                 {past ? (
-                                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-text/10 text-text-light">
-                                        Finalizada
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-text/10 text-text-muted">
+                                        Terminado
                                     </span>
                                 ) : (
                                     <button
-                                        onClick={() => handleToggleConfirm(a.id)}
+                                        onClick={() => handleToggleConfirm(a.id, a.confirmado)}
                                         className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${a.confirmado
                                             ? 'bg-green-500/10 text-green-700'
                                             : 'bg-amber-500/10 text-amber-700'
@@ -504,6 +519,7 @@ function Dashboard() {
                                     >
                                         📱 {a.telefono}
                                     </button>
+                                    <div className="text-text-muted mt-1 mb-1">✉️ {a.email}</div>
                                     {phonePopup === a.id && (
                                         <PhoneActions telefono={a.telefono} onClose={() => setPhonePopup(null)} />
                                     )}
@@ -541,19 +557,55 @@ function Dashboard() {
                     </div>
                 )}
             </div>
+
+            {confirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmModal(null)} />
+                    <div className="relative bg-surface rounded-2xl border border-border p-8 w-full max-w-sm flex flex-col items-center justify-center text-center animate-fade-in-up shadow-2xl">
+                        <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center mb-5 bg-bg">
+                            {confirmModal.type === 'edit'
+                                ? <Edit3 className="w-8 h-8 text-text" />
+                                : <Trash2 className="w-8 h-8 text-red-500" />
+                            }
+                        </div>
+                        <p className="text-text-muted text-sm mb-2">
+                            {confirmModal.type === 'edit'
+                                ? 'Esta accion modificará el turno guardado'
+                                : 'Esta acción eliminará el turno de forma irreversible'}
+                        </p>
+                        <h3 className="text-xl font-semibold text-text mb-8">
+                            ¿Estás seguro?
+                        </h3>
+                        <div className="flex items-center gap-3 w-full">
+                            <button
+                                onClick={() => setConfirmModal(null)}
+                                className="flex-1 py-3 bg-bg border border-border text-text rounded-[10px] text-sm font-semibold hover:bg-text/5 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmModal.type === 'edit' ? confirmSaveEdit : () => confirmDelete(confirmModal.id)}
+                                className={`flex-1 py-3 text-white rounded-[10px] text-sm font-semibold transition-colors ${confirmModal.type === 'edit' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-500 hover:bg-red-600'}`}
+                            >
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
 
 // ── Main page ──
 export default function Admin() {
-    const [authenticated, setAuthenticated] = useState(false)
+    const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem('adminAuth') === 'true')
 
     return (
         <div className="min-h-screen bg-bg">
             <Header />
 
-            <main className="pt-28 pb-20 px-6">
+            <main className="pt-28 pb-20 px-6 min-h-[90vh]">
                 <div className="max-w-5xl mx-auto">
 
                     {/* Hero */}

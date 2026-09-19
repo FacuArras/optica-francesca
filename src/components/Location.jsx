@@ -1,8 +1,8 @@
-import { MapPin, Clock, Phone } from 'lucide-react'
+import { MapPin, Clock, Phone, MessageCircle } from 'lucide-react'
 
 export default function Location() {
     return (
-        <section id="ubicacion" className="relative py-16 md:py-32 px-6 bg-surface-warm">
+        <section id="ubicacion" className="relative py-16 md:pb-32 md:pt-20 px-6 bg-surface-warm">
             {/* Divider top */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
@@ -60,11 +60,25 @@ export default function Location() {
                                 <div>
                                     <h3 className="text-sm font-semibold text-text mb-1">Teléfono</h3>
                                     <p className="text-sm text-text-muted leading-relaxed">
-                                        3515 57-5877
+                                        3515575877
                                     </p>
                                 </div>
                             </div>
                         </div>
+
+                        <a href="https://wa.me/5493515575877" target="_blank" rel="noopener noreferrer" className="block p-6 rounded-2xl bg-surface border border-border hover:border-accent/30 transition-all duration-300 group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 group-hover:bg-accent/15 transition-colors duration-300">
+                                    <MessageCircle className="w-4 h-4 text-accent" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-text mb-1 group-hover:text-accent transition-colors duration-300">WhatsApp</h3>
+                                    <p className="text-sm text-text-muted leading-relaxed">
+                                        Hace click acá para mandar un mensaje vía WhatsApp
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
                     </div>
 
                     {/* Map */}

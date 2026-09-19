@@ -1,21 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Clock, User, Phone, FileText, MessageSquare, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, User, Phone, FileText, MessageSquare, Check, Mail } from 'lucide-react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-
-// ── Mock: turnos ya reservados (fecha ISO → array de horarios) ──
-const reservedSlots = {
-    '2026-09-15': ['09:00', '10:30', '17:00'],
-    '2026-09-16': ['11:00', '13:00', '18:00'],
-    '2026-09-17': ['09:30', '12:00'],
-    '2026-09-18': ['10:00', '17:30', '19:00'],
-    '2026-09-19': ['09:00', '11:30', '18:30'],
-    '2026-09-20': ['09:00', '10:00', '11:00'], // sábado
-    '2026-09-22': ['09:30', '12:30', '17:00', '19:30'],
-    '2026-09-23': ['10:00', '11:00'],
-    '2026-09-24': ['09:00', '17:00', '18:00'],
-}
 
 const morningSlots = [
     '09:00', '09:30', '10:00', '10:30',
@@ -134,10 +121,18 @@ function Calendar({ selectedDate, onSelectDate, currentMonth, onChangeMonth }) {
 }
 
 // ── Time slot button ──
-function TimeSlot({ time, isReserved, isSelected, onSelect }) {
+function TimeSlot({ time, isReserved, isPassed, isSelected, onSelect }) {
     if (isReserved) {
         return (
             <div className="px-4 py-3 rounded-xl bg-text/10 text-text-light/50 text-sm text-center cursor-not-allowed border border-transparent select-none line-through">
+                {time}
+            </div>
+        )
+    }
+
+    if (isPassed) {
+        return (
+            <div className="px-4 py-3 rounded-xl bg-surface border border-border text-text-light/30 text-sm text-center cursor-not-allowed select-none">
                 {time}
             </div>
         )
@@ -167,20 +162,32 @@ export default function Turnos() {
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedTime, setSelectedTime] = useState(null)
     const [showConfirmation, setShowConfirmation] = useState(false)
+    const [reservedSlots, setReservedSlots] = useState({})
+    const [submitting, setSubmitting] = useState(false)
+    const [submitError, setSubmitError] = useState(null)
 
     const [form, setForm] = useState({
         nombre: '',
         telefono: '',
+        email: '',
         receta: 'no',
         observaciones: '',
     })
+
+    // Cargar turnos reservados desde la API
+    useEffect(() => {
+        fetch('/api/turnos')
+            .then((res) => res.json())
+            .then((data) => setReservedSlots(data))
+            .catch((err) => console.error('Error al cargar turnos:', err))
+    }, [])
 
     // Auto-redirect after 10 seconds when confirmation is shown
     useEffect(() => {
         if (!showConfirmation) return
         const timer = setTimeout(() => {
             navigate('/#inicio')
-        }, 10000)
+        }, 5000)
         return () => clearTimeout(timer)
     }, [showConfirmation, navigate])
 
@@ -206,12 +213,57 @@ export default function Turnos() {
         ? selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
         : ''
 
-    const isFormValid = selectedDate && selectedTime && form.nombre.trim() && form.telefono.trim()
+    const isToday = selectedDate && isSameDay(selectedDate, today)
+    const currentHour = today.getHours()
+    const currentMinute = today.getMinutes()
 
-    const handleSubmit = (e) => {
+    const hasTimePassed = (timeString) => {
+        if (!isToday) return false
+        const [h, m] = timeString.split(':').map(Number)
+        if (h < currentHour) return true
+        if (h === currentHour && m <= currentMinute) return true
+        return false
+    }
+
+    const isFormValid = selectedDate && selectedTime && form.nombre.trim() && form.telefono.trim() && form.email.trim()
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!isFormValid) return
-        setShowConfirmation(true)
+        if (!isFormValid || submitting) return
+
+        setSubmitting(true)
+        setSubmitError(null)
+
+        try {
+            const res = await fetch('/api/turnos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...form,
+                    fecha: dateISO,
+                    hora: selectedTime,
+                }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                setSubmitError(data.error || 'Error al reservar el turno. Intentá de nuevo.')
+                return
+            }
+
+            // Actualizar slots localmente para reflejar el turno recién creado
+            setReservedSlots(prev => ({
+                ...prev,
+                [dateISO]: [...(prev[dateISO] || []), selectedTime],
+            }))
+
+            setShowConfirmation(true)
+        } catch (err) {
+            setSubmitError('No se pudo conectar con el servidor. Verificá tu conexión.')
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     return (
@@ -272,6 +324,7 @@ export default function Turnos() {
                                             key={time}
                                             time={time}
                                             isReserved={reserved.includes(time)}
+                                            isPassed={hasTimePassed(time)}
                                             isSelected={selectedTime === time}
                                             onSelect={setSelectedTime}
                                         />
@@ -291,6 +344,7 @@ export default function Turnos() {
                                                 key={time}
                                                 time={time}
                                                 isReserved={reserved.includes(time)}
+                                                isPassed={hasTimePassed(time)}
                                                 isSelected={selectedTime === time}
                                                 onSelect={setSelectedTime}
                                             />
@@ -365,6 +419,22 @@ export default function Turnos() {
                                     />
                                 </div>
 
+                                {/* Email */}
+                                <div>
+                                    <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
+                                        <Mail className="w-4 h-4 text-text-muted" />
+                                        Correo electrónico
+                                    </label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={form.email}
+                                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                        placeholder="Ej: maria@gmail.com"
+                                        className="w-full px-4 py-3 rounded-xl border border-border bg-bg text-text placeholder-text-light text-sm focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all duration-300"
+                                    />
+                                </div>
+
                                 {/* Receta */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-text mb-2">
@@ -407,18 +477,25 @@ export default function Turnos() {
                                     </p>
                                 </div>
 
+                                {/* Error message */}
+                                {submitError && (
+                                    <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                                        {submitError}
+                                    </div>
+                                )}
+
                                 <button
                                     type="submit"
-                                    disabled={!isFormValid}
+                                    disabled={!isFormValid || submitting}
                                     className={`
                                         w-full flex items-center justify-center gap-3 px-8 py-4 rounded-full font-semibold text-base transition-all duration-300
-                                        ${isFormValid
+                                        ${isFormValid && !submitting
                                             ? 'bg-accent text-white hover:bg-accent-hover hover:shadow-xl hover:shadow-accent/20 hover:-translate-y-0.5 cursor-pointer'
                                             : 'bg-text/10 text-text-light cursor-not-allowed'
                                         }
                                     `}
                                 >
-                                    Confirmar turno!
+                                    {submitting ? 'Reservando...' : 'Confirmar turno!'}
                                 </button>
                             </div>
                         </form>

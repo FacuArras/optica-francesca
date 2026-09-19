@@ -1,4 +1,4 @@
-import { Glasses, Instagram, Mail, Phone, MapPin } from 'lucide-react'
+import { Instagram, Phone, MapPin, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const footerLinks = {
@@ -9,21 +9,22 @@ const footerLinks = {
         { label: 'Reservar turno', href: '/turnos', isRoute: true },
     ],
     contacto: [
-        { icon: Phone, label: '3515 57-5877', href: 'tel:03518700027' },
-        { icon: MapPin, label: 'Carlos Gimenez 64, Córdoba', href: '#ubicacion' },
+        { icon: Phone, label: '3515575877', href: 'https://wa.me/5493515575877' },
+        { icon: MessageCircle, label: 'Enviar WhatsApp', href: 'https://wa.me/5493515575877' },
+        { icon: MapPin, label: 'Carlos Gimenez 64, Córdoba', href: "https://www.google.com/maps/dir//''/data=!4m7!4m6!1m1!4e2!1m2!1m1!1s0x94329834a0ae6807:0x8be826879e1fa39b!3e0?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAMYASAF" },
     ],
 }
 
 export default function Footer() {
     return (
-        <footer id="contacto" className="relative pt-20 pb-8 px-6 bg-accent text-white">
+        <footer id="contacto" className="relative pt-16 pb-8 px-6 bg-accent text-white">
             <div className="max-w-6xl mx-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                     {/* Brand */}
                     <div className="lg:col-span-1">
                         <a href="#inicio" className="flex items-center gap-3 mb-5 group">
                             <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
-                                <Glasses className="w-5 h-5 text-white" />
+                                <img src="/logo-blanco.png" alt="Logo Óptica Francesca" className="w-full h-full object-contain" />
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-xs tracking-[0.3em] uppercase text-white/60 font-medium">Óptica</span>
@@ -73,6 +74,8 @@ export default function Footer() {
                                 <li key={link.label}>
                                     <a
                                         href={link.href}
+                                        target={link.href.startsWith('http') ? "_blank" : undefined}
+                                        rel={link.href.startsWith('http') ? "noopener noreferrer" : undefined}
                                         className="flex items-center gap-3 text-sm text-white/70 hover:text-white transition-colors duration-300 group"
                                     >
                                         <link.icon className="w-4 h-4 text-white/50 group-hover:text-white transition-colors duration-300" />

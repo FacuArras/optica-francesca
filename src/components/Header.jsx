@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Menu, X, Glasses } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 const navLinks = [
     { label: 'Inicio', href: '#inicio' },
     { label: 'Servicios', href: '#servicios' },
     { label: 'Ubicación', href: '#ubicacion' },
-    { label: 'Contacto', href: '#contacto' },
 ]
 
 export default function Header() {
@@ -49,8 +48,8 @@ export default function Header() {
             <nav className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
                 {/* Logo */}
                 <a href="#inicio" onClick={(e) => handleNavClick(e, '#inicio')} className="flex items-center gap-3 group">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center group-hover:bg-accent/15 transition-all duration-300">
-                        <Glasses className="w-5 h-5 text-accent" />
+                    <div className="w-10 h-10 rounded-xl  border border-accent/20 flex items-center justify-center group-hover:bg-accent/15 transition-all duration-300 overflow-hidden p-1">
+                        <img src="/logo.png" alt="Logo Óptica Francesca" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xs tracking-[0.3em] uppercase text-text-muted font-medium">Óptica</span>
