@@ -26,15 +26,31 @@ function isPast(fecha, hora) {
 }
 
 // ── Phone actions popup ──
-function PhoneActions({ telefono, onClose }) {
+function PhoneActions({ turno, onClose }) {
     const handleCopy = () => {
-        navigator.clipboard.writeText(telefono)
+        navigator.clipboard.writeText(turno.telefono)
         onClose()
     }
 
     const handleWhatsApp = () => {
-        const cleaned = telefono.replace(/\D/g, '')
+        const cleaned = turno.telefono.replace(/\D/g, '')
         window.open(`https://wa.me/54${cleaned}`, '_blank')
+        onClose()
+    }
+
+    const handleWhatsAppConfirm = () => {
+        const cleaned = turno.telefono.replace(/\D/g, '')
+
+        // Formatear la fecha específicamente para el mensaje
+        const d = new Date(turno.fecha + 'T00:00:00');
+        const diaNombre = d.toLocaleDateString('es-AR', { weekday: 'long' });
+        const diaNumero = d.toLocaleDateString('es-AR', { day: 'numeric' });
+        const mesNombre = d.toLocaleDateString('es-AR', { month: 'long' });
+        const fechaFormateada = `${diaNombre.charAt(0).toUpperCase() + diaNombre.slice(1)} ${diaNumero} de ${mesNombre}`;
+
+        const primerNombre = turno.nombre.trim().split(' ')[0];
+        const mensaje = `Hola ${primerNombre}! Te escribimos de Óptica Francesca para confirmar tu turno del día ${fechaFormateada} a las ${turno.hora}hs. ¿Nos podrás confirmar tu asistencia?`
+        window.open(`https://wa.me/54${cleaned}?text=${encodeURIComponent(mensaje)}`, '_blank')
         onClose()
     }
 
@@ -55,6 +71,13 @@ function PhoneActions({ telefono, onClose }) {
                 >
                     <MessageCircle className="w-4 h-4" />
                     Enviar WhatsApp
+                </button>
+                <button
+                    onClick={handleWhatsAppConfirm}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text hover:bg-accent/5 hover:text-accent transition-all duration-200"
+                >
+                    <Check className="w-4 h-4" />
+                    Enviar confirmación
                 </button>
             </div>
         </>
@@ -420,7 +443,7 @@ function Dashboard() {
                                                 {a.telefono}
                                             </button>
                                             {phonePopup === a.id && (
-                                                <PhoneActions telefono={a.telefono} onClose={() => setPhonePopup(null)} />
+                                                <PhoneActions turno={a} onClose={() => setPhonePopup(null)} />
                                             )}
                                         </td>
                                         <td className="px-5 py-4 text-center">
@@ -541,7 +564,7 @@ function Dashboard() {
                                     </button>
                                     <div className="text-text-muted mt-1 mb-1">✉️ {a.email}</div>
                                     {phonePopup === a.id && (
-                                        <PhoneActions telefono={a.telefono} onClose={() => setPhonePopup(null)} />
+                                        <PhoneActions turno={a} onClose={() => setPhonePopup(null)} />
                                     )}
                                 </div>
                                 <p className="text-text-muted">
