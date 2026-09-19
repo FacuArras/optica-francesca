@@ -2,7 +2,7 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
-import turnosRouter from './routes/turnos.js'
+import turnosRouter from '../server/routes/turnos.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -23,16 +23,22 @@ app.post('/api/auth/login', (req, res) => {
     }
 })
 
-// Conexión a MongoDB
+// Conexión a MongoDB persistente en serverless
 mongoose
     .connect(process.env.MONGODB_URI)
     .then(() => {
         console.log('✅ Conectado a MongoDB')
-        app.listen(PORT, () => {
-            console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`)
-        })
+
+        // Solo inicializar app.listen() si no estamos en Vercel
+        if (!process.env.VERCEL) {
+            app.listen(PORT, () => {
+                console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`)
+            })
+        }
     })
     .catch((err) => {
         console.error('❌ Error al conectar a MongoDB:', err.message)
-        process.exit(1)
     })
+
+// Exportar Express para Vercel Serverless Functions
+export default app
